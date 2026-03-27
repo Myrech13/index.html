@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#2c3e66" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#5f6f8a" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Расписание пар">
+    <title>Расписание пар</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1e293b;
+            padding: 16px;
+            line-height: 1.4;
+        }
+
+        body.dark {
+            background: #25262b;
+            color: #eef2ff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Уведомление о дубликате вкладки */
+        .tab-notice {
+            background: #fef9c3;
+            color: #854d0e;
+            border-left: 5px solid #eab308;
+            padding: 10px 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+        body.dark .tab-notice {
+            background: #332e1a;
+            color: #ffdfa0;
+            border-left-color: #f59e0b;
+        }
+        .tab-notice button {
+            background: #eab308;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #1e293b;
+        }
+
+        /* Панель управления */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(8px);
+            border-radius: 60px;
+            position: sticky;
+            top: 8px;
+            z-index: 10;
+        }
+        body.dark .controls {
+            background: #34363ccc;
+        }
+        .controls button {
+            background: #2c3e66;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: white;
+            flex: 0 0 auto;
+        }
+        .controls button:active {
+            transform: scale(0.96);
+        }
+        body.dark .controls button {
+            background: #5f6f8a;
+        }
+
+        .info-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(4px);
+            padding: 8px 16px;
+            border-radius: 48px;
+            align-items: center;
+        }
+        body.dark .info-panel {
+            background: #34363caa;
+        }
+        .week-range {
+            font-size: 0.9rem;
+        }
+        .week-type {
+            background: #2c3e66;
+            padding: 4px 16px;
+            border-radius: 32px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        body.dark .week-type {
+            background: #5b6e8c;
+        }
+
+        /* Горизонтальный скролл */
+        .days-scroll {
+            overflow-x: auto;
+            overflow-y: visible;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            padding: 8px 4px 20px 4px;
+            margin: 0 -8px;
+        }
+        .days-container {
+            display: flex;
+            gap: 18px;
+            padding: 8px 16px;
+            min-width: min-content;
+        }
+
+        /* Карточка дня */
+        .day-card {
+            flex: 0 0 300px;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        body.dark .day-card {
+            background: #2d2f35;
+        }
+        .day-card.today-highlight {
+            background: #e0f2fe;
+            border: 2px solid #3b82f6;
+            transform: scale(1.02);
+        }
+        body.dark .day-card.today-highlight {
+            background: #2d4059;
+            border-color: #60a5fa;
+        }
+
+        .day-header {
+            padding: 16px 16px 12px;
+            font-weight: 800;
+            font-size: 1.3rem;
+            text-align: center;
+            background: #f1f5f9;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        body.dark .day-header {
+            background: #23252b;
+            border-bottom-color: #3f4148;
+        }
+        .lessons-list {
+            padding: 12px 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* Карточка пары */
+        .lesson-item {
+            background: #fefefe;
+            border-left: 5px solid #cbd5e1;
+            padding: 8px 12px;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 82px;
+        }
+        body.dark .lesson-item {
+            background: #25272e;
+            border-left-color: #4b5563;
+        }
+        .lesson-time-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        body.dark .lesson-time-row {
+            color: #9ca3af;
+        }
+        .room-badge {
+            background: #cbd5e1;
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #1e293b;
+            white-space: nowrap;
+        }
+        body.dark .room-badge {
+            background: #4b5563;
+            color: #f1f5f9;
+        }
+        .lesson-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .subject {
+            font-weight: 600;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex: 1;
+        }
+        .teacher {
+            font-size: 0.7rem;
+            color: #4b5563;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-align: right;
+            max-width: 45%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        body.dark .teacher {
+            color: #b9c3d4;
+        }
+        .empty-lesson {
+            color: #94a3b8;
+            font-style: italic;
+            padding: 4px 0;
+        }
+
+        /* Активные пары */
+        .lesson-item.active-lecture {
+            background: #d9efff !important;
+            border-left-color: #3b82f6 !important;
+        }
+        .lesson-item.active-practice {
+            background: #ffe4cc !important;
+            border-left-color: #f97316 !important;
+        }
+        body.dark .lesson-item.active-lecture {
+            background: #1e3a5f !important;
+            border-left-color: #60a5fa !important;
+        }
+        body.dark .lesson-item.active-practice {
+            background: #5c3a1a !important;
+            border-left-color: #f59e0b !important;
+        }
+
+        /* Легенда и переключатель подгрупп */
+        .legend-note {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 20px;
+            font-size: 0.7rem;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(4px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            width: fit-content;
+            margin: 20px auto 0;
+        }
+        body.dark .legend-note {
+            background: #2c2d30aa;
+        }
+        .legend-lecture {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: #d9efff;
+            border-left: 3px solid #3b82f6;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .legend-practice {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: #ffe4cc;
+            border-left: 3px solid #f97316;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        /* Переключатель подгрупп */
+        .subgroup-switch {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 16px auto 8px;
+        }
+        .subgroup-btn {
+            background: #cbd5e1;
+            border: none;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #1e293b;
+            transition: all 0.2s;
+        }
+        body.dark .subgroup-btn {
+            background: #4b5563;
+            color: #eef2ff;
+        }
+        .subgroup-btn.active {
+            background: #2c3e66;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        body.dark .subgroup-btn.active {
+            background: #5f6f8a;
+        }
+
+        .days-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .days-scroll::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 8px;
+        }
+        body.dark .days-scroll::-webkit-scrollbar-track {
+            background: #3a3c42;
+        }
+        .days-scroll::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 8px;
+        }
+        @media (max-width: 640px) {
+            .day-card { flex: 0 0 280px; }
+            .subject { font-size: 0.8rem; }
+            .teacher { font-size: 0.65rem; max-width: 40%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="duplicateNotice" style="display: none;" class="tab-notice">
+        <span>📌 Расписание уже открыто в другой вкладке.</span>
+        <button id="closeThisTabBtn">Закрыть эту вкладку</button>
+    </div>
+
+    <div class="controls">
+        <button id="prevWeekBtn">← Предыдущая</button>
+        <button id="currentWeekBtn">📅 Текущая</button>
+        <button id="nextWeekBtn">Следующая →</button>
+        <button id="themeToggleBtn" class="theme-toggle">🌙 Тёмная</button>
+    </div>
+
+    <div class="info-panel">
+        <span class="week-range" id="weekRangeLabel">Неделя: загрузка...</span>
+        <span class="week-type" id="weekTypeBadge">числитель</span>
+    </div>
+
+    <div class="days-scroll" id="daysScroll">
+        <div class="days-container" id="daysContainer"></div>
+    </div>
+
+    <!-- Переключатель подгрупп -->
+    <div class="subgroup-switch">
+        <button id="subgroup1Btn" class="subgroup-btn active">Подгруппа 1</button>
+        <button id="subgroup2Btn" class="subgroup-btn">Подгруппа 2</button>
+    </div>
+
+    <div class="legend-note">
+        <span><i class="legend-lecture"></i> Активная лекция</span>
+        <span><i class="legend-practice"></i> Активная практика/лаб</span>
+    </div>
+</div>
+
+<script>
+    // ----- BroadcastChannel для предотвращения дубликатов -----
+    (function checkDuplicateTab() {
+        const channelName = 'timetable_schedule_monitor';
+        let channel = null;
+        try {
+            channel = new BroadcastChannel(channelName);
+            const myId = Date.now() + '-' + Math.random();
+            let responseReceived = false;
+            const handleMessage = (e) => {
+                if (e.data && e.data.type === 'ping' && e.data.id !== myId) {
+                    channel.postMessage({ type: 'pong', id: myId });
+                }
+                if (e.data && e.data.type === 'pong' && !responseReceived) {
+                    responseReceived = true;
+                    const notice = document.getElementById('duplicateNotice');
+                    if (notice) notice.style.display = 'flex';
+                    const closeBtn = document.getElementById('closeThisTabBtn');
+                    if (closeBtn) closeBtn.onclick = () => { window.close(); alert("Закройте вкладку вручную, если не закрылась."); };
+                }
+            };
+            channel.addEventListener('message', handleMessage);
+            channel.postMessage({ type: 'ping', id: myId });
+            setTimeout(() => { if (!responseReceived) { /* одиночная вкладка */ } }, 300);
+            window.addEventListener('beforeunload', () => channel?.close());
+        } catch(e) { /* не поддерживается */ }
+    })();
+
+    // █████████████████████████████████████████████████████████████
+    //  РАСПИСАНИЕ ДВУХ ПОДГРУПП
+    // █████████████████████████████████████████████████████████████
+
+    // ------ Подгруппа 1 (взята из второго предоставленного кода) ------
+    const subgroup1 = (function() {
+        const emptyPair = () => ({ num: "-", den: "-" });
+        const days = Array(7).fill().map(() => Array(6).fill().map(emptyPair));
+
+        // ВТОРНИК
+        const tue = [
+            ["Общая физическая подготовка.", "Общая физическая подготовка."],
+            ["пр.WEB- технологии Толстова И.С.   339", "пр.Прогр. на платформе 1С Мухина Е.В.   336а"],
+            ["пр.Администрирование выч. сетей Хромых Е.А.   336а", "пр.Информационная безопасность Савченко И.И.   332"],
+            ["л.Информационная безопасность Кочешков А.К.   334", "л.Менеджмент Шатохина Н.М.   2"]
+        ];
+        for (let i = 0; i < tue.length; i++) days[1][i] = { num: tue[i][0], den: tue[i][1] };
+
+        // СРЕДА
+        const wed = [
+            ["-", "-"],
+            ["л.Администрирование вычислительных сетей Хромых Е.А.   334", "л.Администрирование вычислительных сетей Хромых Е.А.   334"],
+            ["л.Продукты питания животного происхождения Данылив М.М.   201", "л.Прогрессивное технологическое оборудование Фролова Л.Н.   125"]
+        ];
+        for (let i = 0; i < wed.length; i++) days[2][i] = { num: wed[i][0], den: wed[i][1] };
+
+        // ЧЕТВЕРГ
+        const thu = [
+            ["-", "-"],
+            ["л.Операционные системы Чикунов С.В.   334", "-"],
+            ["л.Объектно-ориентированные системы программирования Мачтаков С.Г.   334", "-"],
+            ["пр.ООСП Мачтаков С.Г.   332", "-"],
+            ["лаб.Продукты питания животного происх.   236", "-"]
+        ];
+        for (let i = 0; i < thu.length; i++) days[3][i] = { num: thu[i][0], den: thu[i][1] };
+
+        // ПЯТНИЦА
+        const fri = [
+            ["-", "-"],
+            ["-", "пр.Менеджмент Смотрова Е.А.   244"],
+            ["пр.Прогрессивное технологическое оборудование Фролова Л.Н.   104", "пр.Прогрессивное технологическое оборудование Фролова Л.Н.   104"],
+            ["пр.Операционные системы Чикунов С.В.   337", "пр.WEB- технологии Толстова И.С.   339"],
+            ["л.WEB- технологии Толстова И.С.   334", "л.Программирование на платформе 1С:Предприятие Толстова И.С.   334"],
+            ["-", "-"]
+        ];
+        for (let i = 0; i < fri.length; i++) days[4][i] = { num: fri[i][0], den: fri[i][1] };
+
+        // СУББОТА
+        const sat = [
+            ["пр.Проектный менеджмент Лемешкин А.В.   337", "-"],
+            ["л.Проектный менеджмент Лемешкин А.В.   334", "-"],
+            ["л.Проектный менеджмент Лемешкин А.В.   334", "-"]
+        ];
+        for (let i = 0; i < sat.length; i++) days[5][i] = { num: sat[i][0], den: sat[i][1] };
+
+        // ПН и ВС остаются пустыми
+        return days;
+    })();
+
+    // ------ Подгруппа 2 (взята из первого длинного кода) ------
+    const subgroup2 = (function() {
+        const emptyPair = () => ({ num: "-", den: "-" });
+        const days = Array(7).fill().map(() => Array(6).fill().map(emptyPair));
+
+        // ПН (0) - пар нет
+        for (let i = 0; i < 6; i++) days[0][i] = { num: "-", den: "-" };
+
+        // ВТ (1)
+        const tueRaw = [
+            "Общая физическая подготовка.", "Общая физическая подготовка.",
+            "пр.Прогр. на платформе 1С Мухина Е.В.   336а", "пр.WEB- технологии Толстова И.С.   339",
+            "пр.Информационная безопасность Савченко И.И.   332", "пр.Администрирование выч. сетей Хромых Е.А.   336а",
+            "л.Информационная безопасность Кочешков А.К.   334", "л.Менеджмент Шатохина Н.М.   2"
+        ];
+        for (let i = 0; i < 4; i++) days[1][i] = { num: tueRaw[i*2], den: tueRaw[i*2+1] };
+
+        // СРЕДА (2) — сдвиг на 1 пару раньше
+        const wedRawOriginal = [
+            "-", "-",
+            "-", "-",
+            "л.Администрирование вычислительных сетей Хромых Е.А.   334", "л.Администрирование вычислительных сетей Хромых Е.А.   334",
+            "л.Продукты питания животного происхождения Данылив М.М.   201", "л.Прогр. техн. оборудование Фролова Л.Н.   125"
+        ];
+        let wedShifted = Array(6).fill().map(() => ({ num: "-", den: "-" }));
+        wedShifted[1] = { num: wedRawOriginal[4], den: wedRawOriginal[5] };
+        wedShifted[2] = { num: wedRawOriginal[6], den: wedRawOriginal[7] };
+        days[2] = wedShifted;
+
+        // ЧЕТВЕРГ (3)
+        const thuRaw = [
+            "-", "-",
+            "л.Операционные системы Чикунов С.В.   334", "-",
+            "л.ООСП Мачтаков С.Г.   334", "-",
+            "-", "пр.ООСП Мачтаков С.Г.   332",
+            "-", "лаб.Продукты питания животного происх. 236"
+        ];
+        let thuArray = Array(6).fill().map(() => ({ num: "-", den: "-" }));
+        for (let i = 0; i < 5; i++) {
+            thuArray[i] = { num: thuRaw[i*2], den: thuRaw[i*2+1] };
+        }
+        days[3] = thuArray;
+
+        // ПЯТНИЦА (4) — сдвиг на 1 пару раньше
+        const friRaw = [
+            "-", "-",
+            "-", "-",
+            "-", "пр.Менеджмент Смотрова Е.А.   244",
+            "пр.Прогр. техн. оборудование Фролова Л.Н.   104", "пр.Прогр. техн. оборудование Фролова Л.Н.   104",
+            "пр.WEB- технологии Толстова И.С.   339", "пр.Операционные системы Зайцева М.А.   337",
+            "л.WEB- технологии Толстова И.С.   334", "л.Прогр. на платформе 1С:Предприятие Толстова И.С.   334"
+        ];
+        let friShifted = Array(6).fill().map(() => ({ num: "-", den: "-" }));
+        friShifted[1] = { num: friRaw[4], den: friRaw[5] };
+        friShifted[2] = { num: friRaw[6], den: friRaw[7] };
+        friShifted[3] = { num: friRaw[8], den: friRaw[9] };
+        friShifted[4] = { num: friRaw[10], den: friRaw[11] };
+        days[4] = friShifted;
+
+        // СУББОТА (5)
+        const satRaw = [
+            "-", "-",
+            "л.Проектный менеджмент Лемешкин А.В.   334", "-",
+            "л.Проектный менеджмент Лемешкин А.В.   334", "-",
+            "пр.Проектный менеджмент Лемешкин А.В.   337", "-"
+        ];
+        let satArray = Array(6).fill().map(() => ({ num: "-", den: "-" }));
+        for (let i = 0; i < 4; i++) {
+            satArray[i] = { num: satRaw[i*2], den: satRaw[i*2+1] };
+        }
+        days[5] = satArray;
+
+        // ВОСКРЕСЕНЬЕ (6)
+        for (let i = 0; i < 6; i++) days[6][i] = { num: "-", den: "-" };
+
+        return days;
+    })();
+
+    // Текущая активная подгруппа (1 или 2)
+    let currentSubgroup = 1;   // 1 — первая подгруппа, 2 — вторая
+
+    // Функция получения текущего расписания в зависимости от выбранной подгруппы
+    function getCurrentSchedule() {
+        return currentSubgroup === 1 ? subgroup1 : subgroup2;
+    }
+
+    // Время пар (индекс 0 = 1 пара)
+    const lessonTimes = [
+        { start: [8,0], end: [9,35], label: "1 пара 8:00–9:35" },
+        { start: [9,45], end: [11,20], label: "2 пара 9:45–11:20" },
+        { start: [11,50], end: [13,25], label: "3 пара 11:50–13:25" },
+        { start: [13,35], end: [15,10], label: "4 пара 13:35–15:10" },
+        { start: [15,20], end: [16,55], label: "5 пара 15:20–16:55" },
+        { start: [17,5], end: [18,40], label: "6 пара 17:05–18:40" }
+    ];
+
+    const BASE_MONDAY = new Date(2024, 8, 2); // первый понедельник сентября 2024
+
+    let currentOffsetWeeks = 0;
+    let currentWeekMonday = null;
+    let currentWeekType = "numerator";
+    let isCurrentRealWeek = true;
+    let activeInterval = null;
+
+    const daysContainer = document.getElementById("daysContainer");
+    const weekRangeLabel = document.getElementById("weekRangeLabel");
+    const weekTypeBadge = document.getElementById("weekTypeBadge");
+    const themeBtn = document.getElementById("themeToggleBtn");
+    const prevBtn = document.getElementById("prevWeekBtn");
+    const nextBtn = document.getElementById("nextWeekBtn");
+    const currentBtn = document.getElementById("currentWeekBtn");
+
+    // Элементы переключателя подгрупп
+    const subgroup1Btn = document.getElementById("subgroup1Btn");
+    const subgroup2Btn = document.getElementById("subgroup2Btn");
+
+    // ---------- ДАТЫ ----------
+    function getMondayOfWeek(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = (day === 0 ? 6 : day - 1);
+        d.setDate(d.getDate() - diff);
+        d.setHours(0,0,0,0);
+        return d;
+    }
+    function getRealCurrentMonday() { return getMondayOfWeek(new Date()); }
+    function weeksDiff(mondayA, mondayB) { return Math.round((mondayA - mondayB) / (7*24*60*60*1000)); }
+    function getWeekTypeFromMonday(targetMonday) {
+        const baseMonday = new Date(BASE_MONDAY);
+        baseMonday.setHours(0,0,0,0);
+        const weeks = weeksDiff(targetMonday, baseMonday);
+        return (weeks % 2 === 0) ? "numerator" : "denominator";
+    }
+    function updateWeekContext() {
+        const realMonday = getRealCurrentMonday();
+        if (currentOffsetWeeks === 0) {
+            currentWeekMonday = new Date(realMonday);
+            isCurrentRealWeek = true;
+        } else {
+            const newMonday = new Date(realMonday);
+            newMonday.setDate(realMonday.getDate() + currentOffsetWeeks * 7);
+            currentWeekMonday = newMonday;
+            isCurrentRealWeek = false;
+        }
+        currentWeekType = getWeekTypeFromMonday(currentWeekMonday);
+    }
+    function formatWeekRange(monday) {
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const opt = { day: 'numeric', month: 'short' };
+        return `${monday.toLocaleDateString('ru-RU', opt)} – ${sunday.toLocaleDateString('ru-RU', opt)}`;
+    }
+
+    // ---------- ПАРСИНГ ----------
+    function parseLesson(rawText) {
+        if (!rawText || rawText === "-") return { subject: "—", teacher: "", room: "", isEmpty: true };
+        let clean = rawText.trim();
+        let typePrefix = "";
+        if (clean.startsWith("л.")) { typePrefix = "л."; clean = clean.substring(2).trim(); }
+        else if (clean.startsWith("пр.")) { typePrefix = "пр."; clean = clean.substring(3).trim(); }
+        else if (clean.startsWith("лаб.")) { typePrefix = "лаб."; clean = clean.substring(4).trim(); }
+        
+        let room = "";
+        let roomMatch = clean.match(/\s+(\d+[а-яА-Я]?)\s*$/);
+        if (roomMatch) {
+            room = roomMatch[1];
+            clean = clean.substring(0, roomMatch.index).trim();
+        }
+        let teacher = "";
+        const teacherPattern = /([А-ЯЁ][а-яё]+\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.)/;
+        const matchTeacher = clean.match(teacherPattern);
+        let subject = clean;
+        if (matchTeacher) {
+            teacher = matchTeacher[1];
+            subject = clean.replace(teacherPattern, "").trim();
+        } else {
+            const simpleName = /([А-ЯЁ][а-яё]+)\s+[А-ЯЁ]\.[А-ЯЁ]\./;
+            const m2 = clean.match(simpleName);
+            if (m2) {
+                teacher = m2[1];
+                subject = clean.replace(simpleName, "").trim();
+            }
+        }
+        subject = subject.replace(/\s+/g, " ").trim();
+        if (typePrefix) subject = typePrefix + " " + subject;
+        if (subject === "") subject = rawText;
+        return { subject, teacher, room, isEmpty: false };
+    }
+
+    function getLessonTypeFromText(rawText) {
+        if (!rawText || rawText === "-") return "empty";
+        const lower = rawText.trim().toLowerCase();
+        if (lower.startsWith("л.")) return "lecture";
+        if (lower.startsWith("пр.") || lower.startsWith("лаб.")) return "practice";
+        if (lower.includes("общая физическая")) return "practice";
+        return "practice";
+    }
+
+    function getActiveLessonIndex(now, dayOfWeek, isRealWeek) {
+        if (!isRealWeek) return -1;
+        const cur = now.getHours()*60 + now.getMinutes();
+        for (let i = 0; i < lessonTimes.length; i++) {
+            const start = lessonTimes[i].start[0]*60 + lessonTimes[i].start[1];
+            const end = lessonTimes[i].end[0]*60 + lessonTimes[i].end[1];
+            if (cur >= start && cur <= end) return i;
+        }
+        return -1;
+    }
+
+    function getFocusDayIndex() {
+        if (!isCurrentRealWeek) return -1;
+        const now = new Date();
+        const curDay = (now.getDay() === 0) ? 6 : now.getDay() - 1;
+        const lastEnd = 18*60+40;
+        const curMin = now.getHours()*60 + now.getMinutes();
+        if (curMin > lastEnd) {
+            let next = curDay + 1;
+            if (next > 6) next = 0;
+            return next;
+        }
+        return curDay;
+    }
+
+    // ---------- ОТРИСОВКА ----------
+    function abbreviateText(text, maxLen) {
+        if (!text || text.length <= maxLen) return text;
+        let short = text.substring(0, maxLen);
+        let lastSpace = short.lastIndexOf(' ');
+        if (lastSpace > maxLen*0.7) short = short.substring(0, lastSpace);
+        return short + "...";
+    }
+
+    function scrollToDayIndex(dayIdx) {
+        const cards = document.querySelectorAll(".day-card");
+        if (cards[dayIdx]) cards[dayIdx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+
+    function renderCards() {
+        if (!currentWeekMonday) return;
+        const weekType = currentWeekType;
+        const isReal = isCurrentRealWeek;
+        const now = new Date();
+        const focusDay = getFocusDayIndex();
+        let activePair = -1, activeDayIdx = -1;
+        if (isReal && focusDay !== -1) {
+            activeDayIdx = focusDay;
+            activePair = getActiveLessonIndex(now, activeDayIdx, true);
+        }
+        const daysNames = ["ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА", "ВОСКРЕСЕНЬЕ"];
+        const schedule = getCurrentSchedule();
+        let cardsHtml = "";
+        for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+            const isHighlight = isReal && (dayIdx === activeDayIdx);
+            const lessons = schedule[dayIdx];
+            let lessonsHtml = "";
+            for (let pairIdx = 0; pairIdx < lessonTimes.length; pairIdx++) {
+                const pair = lessons[pairIdx];
+                let raw = (weekType === "numerator") ? pair.num : pair.den;
+                const isEmpty = (!raw || raw === "-");
+                let parsed = { subject: "—", teacher: "", room: "", isEmpty: true };
+                let lessonType = "empty";
+                if (!isEmpty) {
+                    lessonType = getLessonTypeFromText(raw);
+                    parsed = parseLesson(raw);
+                }
+                let activeClass = "";
+                if (isReal && dayIdx === activeDayIdx && pairIdx === activePair && !isEmpty) {
+                    activeClass = (lessonType === "lecture") ? "active-lecture" : "active-practice";
+                }
+                const timeLabel = lessonTimes[pairIdx].label;
+                let contentHtml = "";
+                if (isEmpty) {
+                    contentHtml = `<div class="empty-lesson">—</div>`;
+                } else {
+                    contentHtml = `
+                        <div class="lesson-main">
+                            <div class="subject">${abbreviateText(parsed.subject, 60)}</div>
+                            ${parsed.teacher ? `<div class="teacher">${abbreviateText(parsed.teacher, 35)}</div>` : ""}
+                        </div>
+                    `;
+                }
+                lessonsHtml += `
+                    <div class="lesson-item ${activeClass}">
+                        <div class="lesson-time-row">
+                            <span>${timeLabel}</span>
+                            ${parsed.room ? `<span class="room-badge">${parsed.room}</span>` : ""}
+                        </div>
+                        ${contentHtml}
+                    </div>
+                `;
+            }
+            const highlightClass = isHighlight ? "today-highlight" : "";
+            cardsHtml += `
+                <div class="day-card ${highlightClass}" data-day-index="${dayIdx}">
+                    <div class="day-header"><div class="day-name">${daysNames[dayIdx]}</div></div>
+                    <div class="lessons-list">${lessonsHtml}</div>
+                </div>
+            `;
+        }
+        daysContainer.innerHTML = cardsHtml;
+        weekRangeLabel.innerHTML = `📅 ${formatWeekRange(currentWeekMonday)}`;
+        weekTypeBadge.innerText = currentWeekType === "numerator" ? "ЧИСЛИТЕЛЬ" : "ЗНАМЕНАТЕЛЬ";
+        if (isReal && focusDay !== -1) scrollToDayIndex(focusDay);
+        else if (!isReal && daysContainer.children[0]) daysContainer.children[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+
+    function updateActiveHighlights() {
+        if (!isCurrentRealWeek) { renderCards(); return; }
+        const now = new Date();
+        const focusDay = getFocusDayIndex();
+        if (focusDay === -1) return;
+        const activePair = getActiveLessonIndex(now, focusDay, true);
+        const weekType = currentWeekType;
+        const schedule = getCurrentSchedule();
+        const cards = document.querySelectorAll(".day-card");
+        if (!cards[focusDay]) return;
+        const items = cards[focusDay].querySelectorAll(".lesson-item");
+        for (let i = 0; i < items.length; i++) {
+            items[i].classList.remove("active-lecture", "active-practice");
+            const pair = schedule[focusDay][i];
+            let raw = (weekType === "numerator") ? pair.num : pair.den;
+            if (!raw || raw === "-") continue;
+            if (i === activePair) {
+                const type = getLessonTypeFromText(raw);
+                items[i].classList.add(type === "lecture" ? "active-lecture" : "active-practice");
+            }
+        }
+        for (let i = 0; i < cards.length; i++) {
+            if (i === focusDay) cards[i].classList.add("today-highlight");
+            else cards[i].classList.remove("today-highlight");
+        }
+    }
+
+    function refreshAll() { updateWeekContext(); renderCards(); }
+
+    function goPrevWeek() { currentOffsetWeeks--; refreshAll(); }
+    function goNextWeek() { currentOffsetWeeks++; refreshAll(); }
+    function goCurrentWeek() { currentOffsetWeeks = 0; refreshAll(); }
+
+    // Переключение подгруппы
+    function setSubgroup(group) {
+        currentSubgroup = group;
+        if (group === 1) {
+            subgroup1Btn.classList.add("active");
+            subgroup2Btn.classList.remove("active");
+        } else {
+            subgroup2Btn.classList.add("active");
+            subgroup1Btn.classList.remove("active");
+        }
+        refreshAll();
+    }
+
+    function initTheme() {
+        if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark");
+        themeBtn.addEventListener("click", () => {
+            document.body.classList.toggle("dark");
+            localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+        });
+    }
+
+    function init() {
+        initTheme();
+        refreshAll();
+        if (activeInterval) clearInterval(activeInterval);
+        activeInterval = setInterval(() => {
+            if (isCurrentRealWeek) updateActiveHighlights();
+            else if (currentOffsetWeeks === 0) updateActiveHighlights();
+        }, 30000);
+        prevBtn.addEventListener("click", goPrevWeek);
+        nextBtn.addEventListener("click", goNextWeek);
+        currentBtn.addEventListener("click", goCurrentWeek);
+        subgroup1Btn.addEventListener("click", () => setSubgroup(1));
+        subgroup2Btn.addEventListener("click", () => setSubgroup(2));
+        window.addEventListener("resize", () => { if (isCurrentRealWeek) scrollToDayIndex(getFocusDayIndex()); });
+    }
+    init();
+</script>
+</body>
+</html>
